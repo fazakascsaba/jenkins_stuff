@@ -61,13 +61,13 @@ pipeline {
 
         stage('create archive directory') {
             steps {
-                sh "ssh weblogic@c01p1-sftp04 'mkdir -p ${my_archive_folder}/tar_gz/${file_prefix}'"
+                sh "ssh weblogic@c01p1-sftp04 'mkdir -p ${my_archive_folder}/${file_prefix}'"
             }
         }
 
         stage('archive file') {
             steps {
-                sh "ssh weblogic@c01p1-sftp04 'mv ${my_work_folder}/tar_gz/${file_prefix}*.gz ${my_archive_folder}/tar_gz/${file_prefix}/'"
+                sh "ssh weblogic@c01p1-sftp04 'mv ${my_work_folder}/tar_gz/${file_prefix}*.gz ${my_archive_folder}/${file_prefix}/'"
             }
         }
 
