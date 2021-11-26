@@ -1,17 +1,19 @@
-//def work_folder="/weblogic_appdata/paymentsense/outgoing/statements"
-//def my_archive_folder=weblogic_appdata/archive/paymentsense/outgoing/statements
+def my_work_folder="/weblogic_appdata/paymentsense/outgoing/statements"
+def my_archive_folder="/weblogic_appdata/archive/paymentsense/outgoing/statements"
+def begins_with="Statement_"
+def ends_with="xml"
+def file_prefix="Statement_All_XML"
+def oos_destination="Output/Acquirer/Statement"
 
-def my_work_folder="/weblogic_appdata/tmp_csaba/statements"
-def my_archive_folder="/weblogic_appdata/tmp_csaba/archive/statements"
-def begins_with="Cover_note_"
-def ends_with="pdf"
-def file_prefix="Cover_note_All_PDF"
-def oos_destination="Output/Acquirer/To_Richard"
 
 pipeline {
     agent { label 'main' }
+
     stages {
         stage('Create directories') {
+            options {
+                timeout(time: 1, unit: 'MINUTES') 
+            }
             steps {
                 sh '''
 				mkdir -p $WORKSPACE/in
@@ -29,6 +31,9 @@ pipeline {
         }
 		
         stage('create enrcypt directory') {
+            options {
+                timeout(time: 1, unit: 'MINUTES') 
+            }
             steps {
                 sh "ssh weblogic@c01p1-sftp04 'mkdir -p ${my_work_folder}/tar_gz/encrypt'"
             }
@@ -43,23 +48,29 @@ pipeline {
 
         stage('move encrypted files to encrypt folder') {
             steps {
-                sh "ssh weblogic@c01p1-sftp04 'mv ${my_work_folder}/tar_gz/*.pgp ${my_work_folder}/tar_gz/encrypt'"
+                sh "ssh weblogic@c01p1-sftp04 'if [ -n \"\$(ls -A ${my_work_folder}/tar_gz/*.pgp 2>/dev/null)\" ]; then mv ${my_work_folder}/tar_gz/*.pgp ${my_work_folder}/tar_gz/encrypt; else echo \"WARNING No files to encrypt.\"; fi'"
             }
         }
 
         stage('copy files to OOS') {
             steps {
-                sh "ssh weblogic@c01p1-sftp04 'oci os object bulk-upload -bn file-exchange --src-dir ${my_work_folder}/tar_gz/encrypt/ --no-overwrite --object-prefix ${oos_destination}/'"
+                sh "ssh weblogic@c01p1-sftp04 'if [ -n \"\$(ls -A ${my_work_folder}/tar_gz/encrypt/*.pgp 2>/dev/null)\" ]; then oci os object bulk-upload -bn file-exchange --src-dir ${my_work_folder}/tar_gz/encrypt/ --no-overwrite --object-prefix ${oos_destination}/; else echo \"WARNING No files to upload.\"; fi'"
             }
         }
 
         stage('remove pgp file') {
+            options {
+                timeout(time: 1, unit: 'MINUTES') 
+            }
             steps {
                 sh "ssh weblogic@c01p1-sftp04 'rm -f ${my_work_folder}/tar_gz/encrypt/*.pgp'"
             }
         }
 
         stage('create archive directory') {
+            options {
+                timeout(time: 1, unit: 'MINUTES') 
+            }
             steps {
                 sh "ssh weblogic@c01p1-sftp04 'mkdir -p ${my_archive_folder}/${file_prefix}'"
             }
@@ -67,7 +78,7 @@ pipeline {
 
         stage('archive file') {
             steps {
-                sh "ssh weblogic@c01p1-sftp04 'mv ${my_work_folder}/tar_gz/${file_prefix}*.gz ${my_archive_folder}/${file_prefix}/'"
+                sh "ssh weblogic@c01p1-sftp04 'if [ -n \"\$(ls -A ${my_work_folder}/tar_gz/${file_prefix}/*.gz 2>/dev/null)\" ]; then mv ${my_work_folder}/tar_gz/${file_prefix}*.gz ${my_archive_folder}/${file_prefix}/; else echo \"WARNING No files to archive.\"; fi'"
             }
         }
 
