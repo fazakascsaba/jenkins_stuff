@@ -26,45 +26,6 @@ pipeline {
             steps {
                 sh "ssh opc@c01p1-sftp04 sudo /home/opc/scripts/pack-files.sh ${my_work_folder} ${begins_with} ${ends_with} ${file_prefix}"
             }
-        
-
-        }
-		
-        stage('create enrcypt directory') {
-            options {
-                timeout(time: 1, unit: 'MINUTES') 
-            }
-            steps {
-                sh "ssh weblogic@c01p1-sftp04 'mkdir -p ${my_work_folder}/tar_gz/encrypt'"
-            }
-        }
-
-        stage('encrypt files') {
-            steps {
-                sh "ssh weblogic@c01p1-sftp04 'for i in \$(ls ${my_work_folder}/tar_gz/${file_prefix}*gz); do /usr/bin/gpg -v --output \$i.pgp --encrypt --recipient itteam@paymentsense.com --trust-model always \$i; done'"
-            }
-        }
-
-
-        stage('move encrypted files to encrypt folder') {
-            steps {
-                sh "ssh weblogic@c01p1-sftp04 'if [ -n \"\$(ls -A ${my_work_folder}/tar_gz/*.pgp 2>/dev/null)\" ]; then mv ${my_work_folder}/tar_gz/*.pgp ${my_work_folder}/tar_gz/encrypt; else echo \"WARNING No files to encrypt.\"; fi'"
-            }
-        }
-
-        stage('copy files to OOS') {
-            steps {
-                sh "ssh weblogic@c01p1-sftp04 'if [ -n \"\$(ls -A ${my_work_folder}/tar_gz/encrypt/*.pgp 2>/dev/null)\" ]; then oci os object bulk-upload -bn file-exchange --src-dir ${my_work_folder}/tar_gz/encrypt/ --no-overwrite --object-prefix ${oos_destination}/; else echo \"WARNING No files to upload.\"; fi'"
-            }
-        }
-
-        stage('remove pgp file') {
-            options {
-                timeout(time: 1, unit: 'MINUTES') 
-            }
-            steps {
-                sh "ssh weblogic@c01p1-sftp04 'rm -f ${my_work_folder}/tar_gz/encrypt/*.pgp'"
-            }
         }
 
         stage('create archive directory') {
@@ -78,7 +39,50 @@ pipeline {
 
         stage('archive file') {
             steps {
-                sh "ssh weblogic@c01p1-sftp04 'if [ -n \"\$(ls -A ${my_work_folder}/tar_gz/${file_prefix}/*.gz 2>/dev/null)\" ]; then mv ${my_work_folder}/tar_gz/${file_prefix}*.gz ${my_archive_folder}/${file_prefix}/; else echo \"WARNING No files to archive.\"; fi'"
+                sh "ssh weblogic@c01p1-sftp04 'if [ -n \"\$(ls -A ${my_work_folder}/${file_prefix}/${file_prefix}*.gz 2>/dev/null)\" ]; then cp ${my_work_folder}/${file_prefix}/${file_prefix}*.gz ${my_archive_folder}/${file_prefix}/; else echo \"WARNING No files to archive.\"; fi'"
+            }
+        }
+		
+        stage('create enrcypt directory') {
+            options {
+                timeout(time: 1, unit: 'MINUTES') 
+            }
+            steps {
+                sh "ssh weblogic@c01p1-sftp04 'mkdir -p ${my_work_folder}/${file_prefix}/encrypt'"
+            }
+        }
+
+        stage('encrypt files') {
+            steps {
+                sh "ssh weblogic@c01p1-sftp04 'for i in \$(ls ${my_work_folder}/${file_prefix}/${file_prefix}*gz); do /usr/bin/gpg -v --output \$i.pgp --encrypt --recipient itteam@paymentsense.com --trust-model always \$i; done'"
+            }
+        }
+
+
+        stage('move encrypted files to encrypt folder') {
+            steps {
+                sh "ssh weblogic@c01p1-sftp04 'if [ -n \"\$(ls -A ${my_work_folder}/${file_prefix}/*.pgp 2>/dev/null)\" ]; then mv ${my_work_folder}/${file_prefix}/*.pgp ${my_work_folder}/${file_prefix}/encrypt; else echo \"WARNING No files to encrypt.\"; fi'"
+            }
+        }
+
+        stage('copy files to OOS') {
+            steps {
+                sh "ssh weblogic@c01p1-sftp04 'if [ -n \"\$(ls -A ${my_work_folder}/${file_prefix}/encrypt/*.pgp 2>/dev/null)\" ]; then oci os object bulk-upload -bn file-exchange --src-dir ${my_work_folder}/${file_prefix}/encrypt/ --no-overwrite --object-prefix ${oos_destination}/; else echo \"WARNING No files to upload.\"; fi'"
+            }
+        }
+
+        stage('remove pgp file') {
+            options {
+                timeout(time: 1, unit: 'MINUTES') 
+            }
+            steps {
+                sh "ssh weblogic@c01p1-sftp04 'rm -f ${my_work_folder}/${file_prefix}/encrypt/*.pgp'"
+            }
+        }
+      
+      stage('remove gz file') {
+            steps {
+                sh "ssh weblogic@c01p1-sftp04 'if [ -n \"\$(ls -A ${my_work_folder}/${file_prefix}/${file_prefix}*.gz 2>/dev/null)\" ]; then rm ${my_work_folder}/${file_prefix}/${file_prefix}*.gz; else echo \"WARNING No gz files to remove.\"; fi'"
             }
         }
 
